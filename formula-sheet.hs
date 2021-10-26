@@ -450,3 +450,78 @@ statics =
 
 printFormulasFor :: [Formula] -> Var -> IO ()
 printFormulasFor f = putStr . unlines . map printFormula . (flip formulasFor) f
+
+-- units
+
+data BaseUnit = Time
+              | Length
+              | Mass
+              | Current
+              | Temp
+              | Amount
+              | Luminosity
+              deriving (Show,Eq,Ord)
+
+type Unit = [(BaseUnit,Integer)]
+
+groupLikeUnits :: Unit -> Unit
+groupLikeUnits xs = map (\g -> (fst (head g),sum (map snd g))) groups
+  where groups = groupBy (\a b -> fst a == fst b) xs
+
+normUnit :: Unit -> Unit
+normUnit = filter ((/= 0) . snd) . groupLikeUnits . sort
+
+baseFromName :: Char -> BaseUnit
+baseFromName 'T' = Time
+baseFromName 'L' = Length
+baseFromName 'M' = Mass
+baseFromName 'I' = Current
+baseFromName 'O' = Temp
+baseFromName 'N' = Amount
+baseFromName 'J' = Luminosity
+baseFromName _ = error "bad"
+
+baseToName :: BaseUnit -> String
+baseToName Time = "T"
+baseToName Length = "L"
+baseToName Mass = "M"
+baseToName Current = "I"
+baseToName Temp = "O"
+baseToName Amount = "N"
+baseToName Luminosity = "J"
+
+baseUnit :: Parser BaseUnit
+baseUnit = baseFromName <$> oneOf "TLMIONJ"
+
+powerUnit :: Parser (BaseUnit,Integer)
+powerUnit = do
+  base <- token baseUnit
+  _ <- reserved "^"
+  expt <- number
+  return (base,expt)
+
+atomUnit :: Parser (BaseUnit,Integer)
+atomUnit = powerUnit <|> ((\b -> (b,1)) <$> baseUnit)
+
+negUnit :: (BaseUnit,Integer) -> (BaseUnit,Integer)
+negUnit (u,n) = (u,-n)
+
+pUnit :: Parser Unit
+pUnit = chainl1 (return <$> token atomUnit) op
+  where op = (infixOp "*" (++)) <|> (infixOp "/" (\x y -> x ++ map negUnit y))
+
+parseUnit :: String -> Unit
+parseUnit = runParser pUnit
+
+printUnit' :: (BaseUnit,Integer) -> String
+printUnit' (u,1) = baseToName u
+printUnit' (u,n) = baseToName u ++ "^" ++ show n
+
+printUnit :: Unit -> String
+printUnit xs
+  | null neg' = posS
+  | otherwise = posS ++ "/" ++ negS `wrapIf` (length neg' > 1)
+  where (pos,neg') = partition ((>0) . snd) xs
+        posS = intercalate "*" (map printUnit' pos)
+        negS = intercalate "*" (map (printUnit' . negUnit) neg')
+
