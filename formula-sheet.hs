@@ -5,6 +5,8 @@ import Control.Monad
 import Control.Applicative
 import Data.Maybe
 import Data.List
+import Data.Map (Map)
+import qualified Data.Map as Map
 
 -- parsing helpers (copied from http://dev.stephendiehl.com/fun/002_parsers.html)
 
@@ -390,70 +392,76 @@ printFormula :: Formula -> String
 printFormula (Formula d "") = printDef d
 printFormula (Formula d ex) = printDef d ++ ", " ++ ex
 
-formula :: String -> String -> Formula
-formula d s = Formula (parseDef d) s
+formula :: DimDefs -> String -> String -> Formula
+formula defs d s
+  | checkDims defs d' = Formula d' s
+  | otherwise = error "bad dims"
+  where d' = parseDef d
+
+formulaSheet :: DimDefs -> [(String,String)] -> [Formula]
+formulaSheet defs = map (uncurry (formula defs))
 
 physics :: [Formula]
-physics =
-  [ formula "F=m*a" "Newton's 2nd law"
-  , formula "x=x_0+v_0*t+(1/2)*a*t^2" ""
-  , formula "T=2*pi/omega" ""
-  , formula "omega=(k_s/m)^(1/2)" "S.H.O."
-  , formula "F=(k*q_1*q_2*r_hat)/r^2" "Force between point charges"
-  , formula "k=1/(4*pi*epsilon_0)" ""
-  , formula "F=q*E" "Force from electric field"
-  , formula "E=(k*Q*z*k_hat)/(R^2+z^2)^(3/2)" "Field from ring (along center)"
-  , formula "E=0" "Field inside spherical or cylindrical shell"
-  , formula "E=(2*k*lambda*r_hat)/r" "Field from infinite line or outside infinite cylinder"
-  , formula "E=(k*Q*r_hat)/r^2" "Field from point charge"
-  , formula "E=2*pi*k*sigma*k_hat" "Field from infinite sheet"
-  , formula "J=rho_r*v" ""
-  , formula "v=I/(4*pi*rho_r*r^2)*r_hat" "Velocity field for a point source"
-  , formula "F=-k_s*x" "Hooke's Law"
-  , formula "sigma=epsilon_0*E" "Charge density at the surface of a conductor"
-  , formula "V=EMF" "Ideal battery"
-  , formula "P=I*V" "Power"
-  , formula "J=sigma_c*E" ""
-  , formula "v=(q/b)*E" ""
-  , formula "sigma_c=n*q^2/b" ""
-  , formula "rho_r=1/sigma_c" "Resistivity and conductivity"
-  , formula "E=rho_r*J" ""
-  , formula "V=E*L" ""
-  , formula "R=L/(sigma_c*A)" ""
-  , formula "R=rho_r*L/A" ""
-  , formula "P=I^2*R" "Power"
-  , formula "P=V^2/R" "Power"
-  , formula "sigma=Q/A" ""
-  , formula "V=E*d" ""
-  , formula "Q=C*V" ""
-  , formula "C=epsilon_0*A/d" ""
-  , formula "E=E_0/kappa" "Field with dielectric constant"
-  , formula "C=kappa*epsilon_0*A/d" "Capacitance with dielectric constant"
-  , formula "U=Q*V/2" "Potential energy"
-  , formula "U=C*V^2/2" "Potential energy"
-  , formula "U=Q^2/(2*C)" "Potential energy"
-  , formula "R_eff=R_1+R_2" "Resistors in series"
-  , formula "R_eff=1/(1/R_1+1/R_2)" "Resistors in parallel"
-  , formula "C_eff=1/(1/C_1+1/C_2)" "Capacitors in series"
-  , formula "C_eff=C_1+C_2" "Capacitors in parallel"
+physics = formulaSheet physicsDims
+  [ ("F=m*a", "Newton's 2nd law")
+  , ("x=x_0+v_0*t+(1/2)*a*t^2", "")
+  , ("T=2*pi/omega", "")
+  , ("omega=(k_s/m)^(1/2)", "S.H.O.")
+  , ("F=(k*q_1*q_2*r_hat)/r^2", "Force between point charges")
+  , ("k=1/(4*pi*epsilon_0)", "")
+  , ("F=q*E", "Force from electric field")
+  , ("E=(k*Q*z*k_hat)/(R_r^2+z^2)^(3/2)", "Field from ring (along center)")
+  , ("E=0", "Field inside spherical or cylindrical shell")
+  , ("E=(2*k*lambda*r_hat)/r", "Field from infinite line or outside infinite cylinder")
+  , ("E=(k*Q*r_hat)/r^2", "Field from point charge")
+  , ("E=2*pi*k*sigma*k_hat", "Field from infinite sheet")
+  -- , ("J=rho_r*v", "")
+  -- , ("v=I/(4*pi*rho_r*r^2)*r_hat", "Velocity field for a point source")
+  , ("F=-k_s*x", "Hooke's Law")
+  , ("sigma=epsilon_0*E", "Charge density at the surface of a conductor")
+  , ("V=EMF", "Ideal battery")
+  , ("P=I*V", "Power")
+  , ("J=sigma_c*E", "")
+  -- , ("v=(q/b)*E", "")
+  -- , ("sigma_c=n*q^2/b", "")
+  , ("rho_r=1/sigma_c", "Resistivity and conductivity")
+  , ("E=rho_r*J", "")
+  , ("V=E*L", "")
+  , ("R=L/(sigma_c*A)", "")
+  , ("R=rho_r*L/A", "")
+  , ("P=I^2*R", "Power")
+  , ("P=V^2/R", "Power")
+  , ("sigma=Q/A", "")
+  , ("V=E*d", "")
+  , ("Q=C*V", "")
+  , ("C=epsilon_0*A/d", "")
+  , ("E=E_0/kappa", "Field with dielectric constant")
+  , ("C=kappa*epsilon_0*A/d", "Capacitance with dielectric constant")
+  , ("U=Q*V/2", "Potential energy")
+  , ("U=C*V^2/2", "Potential energy")
+  , ("U=Q^2/(2*C)", "Potential energy")
+  , ("R_eff=R_1+R_2", "Resistors in series")
+  , ("R_eff=1/(1/R_1+1/R_2)", "Resistors in parallel")
+  , ("C_eff=1/(1/C_1+1/C_2)", "Capacitors in series")
+  , ("C_eff=C_1+C_2", "Capacitors in parallel")
   ]
 
-statics :: [Formula]
-statics =
-  [ formula "tau=T*rho/J" "Torsion"
-  , formula "gamma=tau/G" ""
-  , formula "gamma=phi*rho/L" ""
-  , formula "phi=T*L/(G*J)" ""
-  , formula "phi_1=-r_2/r_1*phi_2" "gears"
-  , formula "T_1=r_1/r_2*T_2" "gears"
-  ]
+-- statics :: [Formula]
+-- statics = formulaSheet
+  -- [ ("tau=T*rho/J", "Torsion")
+  -- , ("gamma=tau/G", "")
+  -- , ("gamma=phi*rho/L", "")
+  -- , ("phi=T*L/(G*J)", "")
+  -- , ("phi_1=-r_2/r_1*phi_2", "gears")
+  -- , ("T_1=r_1/r_2*T_2", "gears")
+  -- ]
 
 printFormulasFor :: [Formula] -> Var -> IO ()
 printFormulasFor f = putStr . unlines . map printFormula . (flip formulasFor) f
 
--- units
+-- dims
 
-data BaseUnit = Time
+data BaseDim = Time
               | Length
               | Mass
               | Current
@@ -462,16 +470,16 @@ data BaseUnit = Time
               | Luminosity
               deriving (Show,Eq,Ord)
 
-type Unit = [(BaseUnit,Integer)]
+type Dim = [(BaseDim,Integer)]
 
-groupLikeUnits :: Unit -> Unit
-groupLikeUnits xs = map (\g -> (fst (head g),sum (map snd g))) groups
+groupLikeDims :: Dim -> Dim
+groupLikeDims xs = map (\g -> (fst (head g),sum (map snd g))) groups
   where groups = groupBy (\a b -> fst a == fst b) xs
 
-normUnit :: Unit -> Unit
-normUnit = filter ((/= 0) . snd) . groupLikeUnits . sort
+normDim :: Dim -> Dim
+normDim = filter ((/= 0) . snd) . groupLikeDims . sort
 
-baseFromName :: Char -> BaseUnit
+baseFromName :: Char -> BaseDim
 baseFromName 'T' = Time
 baseFromName 'L' = Length
 baseFromName 'M' = Mass
@@ -481,7 +489,7 @@ baseFromName 'N' = Amount
 baseFromName 'J' = Luminosity
 baseFromName _ = error "bad"
 
-baseToName :: BaseUnit -> String
+baseToName :: BaseDim -> String
 baseToName Time = "T"
 baseToName Length = "L"
 baseToName Mass = "M"
@@ -490,38 +498,147 @@ baseToName Temp = "O"
 baseToName Amount = "N"
 baseToName Luminosity = "J"
 
-baseUnit :: Parser BaseUnit
-baseUnit = baseFromName <$> oneOf "TLMIONJ"
+baseDim :: Parser BaseDim
+baseDim = baseFromName <$> oneOf "TLMIONJ"
 
-powerUnit :: Parser (BaseUnit,Integer)
-powerUnit = do
-  base <- token baseUnit
+powerDim :: Parser (BaseDim,Integer)
+powerDim = do
+  base <- token baseDim
   _ <- reserved "^"
   expt <- number
   return (base,expt)
 
-atomUnit :: Parser (BaseUnit,Integer)
-atomUnit = powerUnit <|> ((\b -> (b,1)) <$> baseUnit)
+atomDim :: Parser (BaseDim,Integer)
+atomDim = powerDim <|> ((\b -> (b,1)) <$> baseDim)
 
-negUnit :: (BaseUnit,Integer) -> (BaseUnit,Integer)
-negUnit (u,n) = (u,-n)
+mulDim :: Integer -> (BaseDim,Integer) -> (BaseDim,Integer)
+mulDim x (u,n) = (u,x*n)
 
-pUnit :: Parser Unit
-pUnit = chainl1 (return <$> token atomUnit) op
-  where op = (infixOp "*" (++)) <|> (infixOp "/" (\x y -> x ++ map negUnit y))
+divDim :: Integer -> (BaseDim,Integer) -> (BaseDim,Integer)
+divDim x (u,n) = (u,n`div`x)
 
-parseUnit :: String -> Unit
-parseUnit = runParser pUnit
+negDim :: (BaseDim,Integer) -> (BaseDim,Integer)
+negDim = mulDim (-1)
 
-printUnit' :: (BaseUnit,Integer) -> String
-printUnit' (u,1) = baseToName u
-printUnit' (u,n) = baseToName u ++ "^" ++ show n
+atomDim' :: Parser Dim
+atomDim' = (parens dimChain) <|> (return <$> token atomDim) <|> (reserved "1" >> return [])
 
-printUnit :: Unit -> String
-printUnit xs
+dimChain :: Parser Dim
+dimChain = chainl1 atomDim' op
+  where op = (infixOp "*" (++)) <|> (infixOp "/" (\x y -> x ++ map negDim y))
+
+parseDim :: String -> Dim
+parseDim = runParser dimChain
+
+printDim' :: (BaseDim,Integer) -> String
+printDim' (u,1) = baseToName u
+printDim' (u,n) = baseToName u ++ "^" ++ show n
+
+printDim :: Dim -> String
+printDim xs
   | null neg' = posS
-  | otherwise = posS ++ "/" ++ negS `wrapIf` (length neg' > 1)
+  | otherwise = (if null pos then "1" else posS) ++ "/" ++ negS `wrapIf` (length neg' > 1)
   where (pos,neg') = partition ((>0) . snd) xs
-        posS = intercalate "*" (map printUnit' pos)
-        negS = intercalate "*" (map (printUnit' . negUnit) neg')
+        posS = intercalate "*" (map printDim' pos)
+        negS = intercalate "*" (map (printDim' . negDim) neg')
 
+makeDim :: String -> Dim
+makeDim = normDim . parseDim
+
+type DimDefs = Map Var Dim
+
+physicsDims :: DimDefs
+physicsDims = Map.fromList
+  [ ("x", makeDim "L")
+  , ("x_0", makeDim "L")
+  , ("v", makeDim "L/T")
+  , ("v_0", makeDim "L/T")
+  , ("a", makeDim "L/T^2")
+  , ("t", makeDim "T")
+  , ("F", makeDim "M*L/T^2")
+  , ("m", makeDim "M")
+  , ("T", makeDim "T")
+  , ("pi", [])
+  , ("omega", makeDim "1/T")
+  , ("k_s", makeDim "M/T^2")
+  , ("k", makeDim "M*L^3*T^-4*I^-2")
+  , ("q_1", makeDim "I*T")
+  , ("q_2", makeDim "I*T")
+  , ("r_hat", [])
+  , ("r", makeDim "L")
+  , ("epsilon_0", makeDim "1/(M*L^3*T^-4*I^-2)")
+  , ("q", makeDim "I*T")
+  , ("E", makeDim "L*M*T^-3*I^-1")
+  , ("E_0", makeDim "L*M*T^-3*I^-1")
+  , ("R", makeDim "M*L^2/(T^3*I^2)")
+  , ("R_1", makeDim "M*L^2/(T^3*I^2)")
+  , ("R_2", makeDim "M*L^2/(T^3*I^2)")
+  , ("R_eff", makeDim "M*L^2/(T^3*I^2)")
+  , ("z", makeDim "L")
+  , ("k_hat", [])
+  , ("Q", makeDim "I*T")
+  , ("R_r", makeDim "L")
+  , ("lambda", makeDim "I*T/L")
+  , ("sigma", makeDim "I*T/L^2")
+  , ("J", makeDim "I/L^2")
+  , ("rho_r", makeDim "M*L^3*T^-3*I^-2")
+  , ("I", makeDim "I")
+  , ("V", makeDim "I^-1*L^2*M*T^-3")
+  , ("EMF", makeDim "I^-1*L^2*M*T^-3")
+  , ("P", makeDim "L^2*M*T^-3")
+  , ("sigma_c", makeDim "1/(M*L^3*T^-3*I^-2)")
+  , ("L", makeDim "L")
+  , ("A", makeDim "L^2")
+  , ("d", makeDim "L")
+  , ("C", makeDim "I^2*L^-2*M^-1*T^4")
+  , ("C_1", makeDim "I^2*L^-2*M^-1*T^4")
+  , ("C_2", makeDim "I^2*L^-2*M^-1*T^4")
+  , ("C_eff", makeDim "I^2*L^-2*M^-1*T^4")
+  , ("kappa", [])
+  , ("U", makeDim "L^2*M*T^-2")
+  ]
+
+lookupDim :: Var -> DimDefs -> Dim
+lookupDim v defs = case Map.lookup v defs of
+  Nothing -> error $ v ++ " has no defined dims"
+  Just x -> x
+
+evalDim :: DimDefs -> Expr -> Maybe Dim
+evalDim defs (Sum a b) = do
+  aU <- evalDim defs a
+  bU <- evalDim defs b
+  guard $ aU == bU
+  return aU
+evalDim defs (Product a b) = do
+  aU <- evalDim defs a
+  bU <- evalDim defs b
+  return $ normDim $ aU ++ bU
+evalDim _ (N _) = Just []
+evalDim defs (Constant c) = Just $ lookupDim c defs
+evalDim defs (Var v) = Just $ lookupDim v defs
+evalDim defs (D y x) = do
+  yU <- evalDim defs y
+  xU <- return $ lookupDim x defs
+  return $ normDim $ yU ++ map negDim xU
+evalDim defs (I y x) = do
+  yU <- evalDim defs y
+  xU <- return $ lookupDim x defs
+  return $ normDim $ yU ++ xU
+evalDim defs (Expt a (N n)) = do
+  aU <- evalDim defs a
+  return $ normDim $ map (mulDim n) aU
+-- bad and stupid
+evalDim defs (Expt a (Product (N n) (Expt (N d) (N (-1))))) = do
+  aU <- evalDim defs a
+  guard $ all (\u -> mod (snd u) d == 0) aU
+  return $ normDim $ map (mulDim n) $ map (divDim d) aU
+evalDim _ e = error $ "cannot handle dims: " ++ printExpr (toPrintExpr e)
+
+checkDims :: DimDefs -> Def -> Bool
+-- special case (bad)
+checkDims _ (Def _ (N 0)) = True -- can just set anything to 0, don't care
+checkDims defs (Def a b) = isJust $ do
+  aU <- evalDim defs a
+  bU <- evalDim defs b
+  guard $ aU == bU
+  return ()
